@@ -18,35 +18,91 @@ class AuthController
     {
         $conn = $this->conn;
         if (isset($_POST['submit'])) {
-
+            
             // TODO: Lengkapi fungsi login dengan langkah berikut:
             // 1. Ambil nim dari form login menggunakan $_POST dan simpan di variabel $nim
-            // 2. Ambil password dari form login menggunakan $_POST dan simpan di variabel $password
-            // 3. Buat query untuk mencari mahasiswa berdasarkan NIM dan simpan di variabel $query
-            // 4. Eksekusi query menggunakan mysqli_query dan simpan di variabel $result
-            // 5. Ambil hasil query menggunakan mysqli_fetch_assoc dan simpan di variabel $data_mahasiswa
-            // 6. Jika data hasil query ditemukan:
-            //    - Jika password valid (gunakan password_verify):
-            //      - Set session login = true
-            //      - Set session user dengan $data_mahasiswa
-            //      - Set session message dengan "Login Berhasil"
-            //      - Jika remember_me dicentang (gunakan isset()):
-            //        - Buat cookie untuk nim
-            //        - Buat cookie untuk password
-            //      - Jika tidak dicentang:
-            //        - Hapus cookie nim
-            //        - Hapus cookie password
-            //      - Redirect ke halaman dashboard menggunakan header('Location: index.php?controller=dashboard&action=index')
-            //      - Jangan lupa exit setelah redirect
-            //    - Jika verifikasi password salah, set session message "Login Gagal NIM atau Password Salah"
-            // 7. Jika data hasil query tidak ditemukan, set session message "NIM Tidak Ditemukan"
+            $nim = $_POST['nim'];
 
+            // 2. Ambil password dari form login menggunakan $_POST dan simpan di variabel $password
+            $password = $_POST['password'];
+
+            // 3. Buat query untuk mencari mahasiswa berdasarkan NIM dan simpan di variabel $query
+            $query1 = "SELECT * FROM users WHERE nim = '$nim'";
+
+            // 4. Eksekusi query menggunakan mysqli_query dan simpan di variabel $result
+            $result = mysqli_query($conn, $query1);
+
+            // 5. Ambil hasil query menggunakan mysqli_fetch_assoc dan simpan di variabel $data_mahasiswa
+            $data_mahasiswa = mysqli_fetch_assoc($result);
+
+            // 6. Jika data hasil query ditemukan:
+            if($data_mahasiswa) {
+            //    - Jika password valid (gunakan password_verify):
+            if (password_verify($password, $data['password'])) {
+                
+            //      - Set session login = true
+            $_SESSION["login"] = true;
+
+            //      - Set session user dengan $data_mahasiswa
+            $_SESSION["user"] = $data_mahasiswa["user"];
+
+            //      - Set session message dengan "Login Berhasil"
+            $_SESSION["message"] = "Login Berhasil";
+
+            //      - Jika remember_me dicentang (gunakan isset()):
+            if (isset($_POST["remember"])) {
+
+            //        - Buat cookie untuk nim
+            setcookie("nim", $data_mahasiswa["nim"], time() + (86400 * 30), "/");
+
+            //        - Buat cookie untuk password
+            setcookie("password", $data_mahasiswa["password"], time() + (86400 * 30), "/");
+
+            //      - Jika tidak dicentang:
+            } else {
+            //        - Hapus cookie nim
+            setcookie("nim", "", time() - 3600, "/");
+
+            //      - Hapus cookie password
+            setcookie("password", "", time() - 3600, "/");
+
+            //      - Redirect ke halaman dashboard menggunakan header('Location: index.php?controller=dashboard&action=index')
+            header("Location : home.index.php?controller=dashboard&action=index");
+            //      - Jangan lupa exit setelah redirect
+            exit;
+            }
+            //    - Jika verifikasi password salah, set session message "Login Gagal NIM atau Password Salah"
+            } else {
+            $_SESSION['message'] = "Login Gagal NIM atau Password Salah";
+            }
+            // 7. Jika data hasil query tidak ditemukan, set session message "NIM Tidak Ditemukan"
+            } else {
+            $_SESSION['message'] = "NIM Tidak Ditemukan";
+
+            }    
         }
+    
 
         include 'views/auth/login.php';
     }
 
     private function getJurusan($jurusan){
+        $kode_jurusan = 0;
+        switch ($kode_jurusan) {
+            case 'Kedokteran'; 
+                $kode_jurusan = 11;
+                break;
+            case 'psikolog';
+                $kode_jurusan = 12;
+                break;
+            case 'biologi';
+                $kode_jurusan = 13;
+                break;
+            case 'Teknik Informatika';
+                $kode_jurusan = 14;
+                break;
+        }
+        return $kode_jurusan;
         // TODO: Lengkapi fungsi untuk mendapatkan kode jurusan
         // 1. Buat variabel $kode_jurusan dengan nilai default 0
         // 2. Gunakan switch-case atau if-else untuk mengatur variabel $kode_jurusan:
@@ -59,6 +115,16 @@ class AuthController
 
     private function generateNIM($id_pendaftaran){
         $conn = $this->conn;
+
+        $query = "SELECT * FROM pendaftaran WHERE id_pendaftaran = '$id_pendaftaran'";
+        $result = mysqli_query($conn, $query1);
+        $data_pendaftaran = mysqli_fetch_assoc($result);
+        $tahunmasuk = date ('y');
+
+            if ($data_pendaftaran){
+                $jurusan = $data_pendaftaran ['jurusan'];
+                
+            }
         // TODO: Lengkapi fungsi untuk generate NIM dengan format: kode_jurusan + tahun_masuk + id_pendaftaran
         // 1. Buat query untuk mengambil data pendaftaran berdasarkan $id_pendaftaran dan simpan di variabel $query
         // 2. Eksekusi query menggunakan mysqli_query dan simpan di variabel $result
@@ -146,12 +212,14 @@ class AuthController
 
     public function logout() 
     {
+        session_destroy ();
+        header('Location: ../views/login.index.php?controller=auth&action');
+        exit;
         // TODO: Implementasikan fungsi logout
         // 1. Hapus semua data session menggunakan destroy()
         // 2. Redirect ke halaman login dengan:
         //    - Gunakan header('Location: index.php?controller=auth&action=login')
         //    - Jangan lupa exit setelah redirect
-                
     }
 }
 
